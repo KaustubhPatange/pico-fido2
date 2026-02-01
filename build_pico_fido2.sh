@@ -13,15 +13,25 @@ mkdir -p release
 rm -rf -- release/*
 cd build_release
 
-PICO_SDK_PATH="${PICO_SDK_PATH:-../../pico-sdk}"
-board_dir=${PICO_SDK_PATH}/src/boards/include/boards
+PICO_SDK_PATH="/opt/pico-sdk"
 SECURE_BOOT_PKEY="${SECURE_BOOT_PKEY:-../../ec_private_key.pem}"
+PICO_PLATFORM="rp2350"
+PICO_SDK_TOOLCHAIN="/opt/gcc-arm-none-eabi"
 
-for board in "$board_dir"/*
+boards=("waveshare_rp2350_one") # See all_boards.txt
+
+# board_dir=${PICO_SDK_PATH}/src/boards/include/boards
+
+for board_name in "${boards[@]}"
 do
-    board_name="$(basename -- "$board" .h)"
     rm -rf -- ./*
-    PICO_SDK_PATH="${PICO_SDK_PATH}" cmake .. -DPICO_BOARD=$board_name -DSECURE_BOOT_PKEY=${SECURE_BOOT_PKEY} -DENABLE_EDDSA=1
-    make -j`nproc`
+    PICO_SDK_PATH="${PICO_SDK_PATH}" PICO_TOOLCHAIN_PATH="${PICO_SDK_TOOLCHAIN}" PICO_PLATFORM="${PICO_PLATFORM}" cmake .. \
+        -DPICO_BOARD=$board_name \
+        -DENABLE_EDDSA=1 \
+        -DENABLE_POWER_ON_RESET=1 \ # if you want to support Reset functionality
+        -DENABLE_OATH_APP=1 \
+        -DENABLE_OTP_APP=1 \
+        -DVIDPID=Yubikey5
+    make -j4
     mv pico_fido2.uf2 ../release/pico_fido2_$board_name-$SUFFIX.uf2
 done
